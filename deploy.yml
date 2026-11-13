@@ -22,7 +22,9 @@ export: true
 definitions:
   services:
     docker:
-      memory: 2048
+      # 3072 is the most a size: 1x step allows (4096 total, 1024 kept for the build
+      # container, where the pipe runs). Sized for CRA builds (customer-360).
+      memory: 3072
 
   # The pipe version lives here only. When a new pipe release is tagged, change this line.
   pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.2

@@ -1,6 +1,6 @@
 # pipeline-templates
 
-Current release: **`1.0.2`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`)
+Current release: **`1.0.3`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`; Docker memory 3072 MB)
 
 Shared Bitbucket Pipelines for Providus apps: build, PR image check, promotion and the
 GitOps update, all done by [build-ops-pipe](https://bitbucket.org/nndukwe/build-ops-pipe).
@@ -15,7 +15,7 @@ The app's whole `bitbucket-pipelines.yml`:
 definitions:
   app-name: my-app   # image tag prefix and gitops folder: environments/<env>/<app-name>
   imports:
-    platform: pipeline-templates:1.0.2:deploy.yml
+    platform: pipeline-templates:1.0.3:deploy.yml
 
 pipelines:
   pull-requests:
