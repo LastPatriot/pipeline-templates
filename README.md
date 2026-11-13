@@ -1,5 +1,7 @@
 # pipeline-templates
 
+Current release: **`1.0.2`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`)
+
 Shared Bitbucket Pipelines for Providus apps: build, PR image check, promotion and the
 GitOps update, all done by [build-ops-pipe](https://bitbucket.org/nndukwe/build-ops-pipe).
 App repos import these pipelines instead of copying them. Bitbucket shared pipeline
@@ -13,7 +15,7 @@ The app's whole `bitbucket-pipelines.yml`:
 definitions:
   app-name: my-app   # image tag prefix and gitops folder: environments/<env>/<app-name>
   imports:
-    platform: pipeline-templates:1.0.0:deploy.yml
+    platform: pipeline-templates:1.0.2:deploy.yml
 
 pipelines:
   pull-requests:
@@ -37,14 +39,17 @@ passed to importing repos.
 
 | Where | Variable |
 |---|---|
-| Repository | `DOCKERHUB_USERNAME`, `DOCKERHUB_READ_TOKEN` (secured, read-only), `GITOPS_ACCESS_TOKEN` (secured), `GITOPS_BOT_EMAIL` |
+| Repository | `DOCKERHUB_USERNAME`, `DOCKERHUB_READ_TOKEN` (secured, read-only; used by `pr-check` to look up app images), `GITOPS_ACCESS_TOKEN` (secured), `GITOPS_BOT_EMAIL` |
 | Deployments `Staging`, `Production` | `DOCKER_PASSWORD` (secured, push access) |
 
 ## Releasing
 
-1. Change `deploy.yml` (e.g. bump `pipe-version`) and merge to `main`.
-2. Tag it: `git tag 1.1.0 && git push origin 1.1.0`.
-3. Move each app's import to the new tag.
+1. Change `deploy.yml` (e.g. bump `pipe-version` after a build-ops-pipe release) and update
+   "Current release" at the top of this README. Merge to `main`.
+2. Tag it with the next version: `git tag 1.0.3 && git push origin 1.0.3`.
+3. Move each app's import (`pipeline-templates:<tag>:deploy.yml`) to the new tag.
+
+The pipe image is public (`provdev/platform`), so steps need no `docker login` to pull it.
 
 ## Keeping app pipelines locked down
 
