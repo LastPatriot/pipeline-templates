@@ -27,11 +27,10 @@ definitions:
   # The pipe version lives here only. When a new pipe release is tagged, change this line.
   pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.1
 
-  # The pipe's image is in private provdev/appdev: log in before the pipe so Bitbucket can
-  # pull it. APP_NAME comes from `app-name:` under `definitions:` in the app's own
-  # bitbucket-pipelines.yml (an import cannot pass variables).
+  # APP_NAME comes from `app-name:` under `definitions:` in the app's own
+  # bitbucket-pipelines.yml (an import cannot pass variables). The pipe image is public
+  # (provdev/platform), so no docker login is needed to pull it.
   pipe-setup: &pipe-setup |
-    echo "$DOCKERHUB_READ_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
     APP_NAME="$(sed -n 's/^[[:space:]]*app-name:[[:space:]]*//p' bitbucket-pipelines.yml | head -n1 | sed 's/[[:space:]]*#.*//' | tr -d "\"' \r")"
     if [ -z "$APP_NAME" ]; then echo "ERROR: add 'app-name: <your-app>' under definitions: in bitbucket-pipelines.yml"; exit 1; fi
     echo "APP_NAME=$APP_NAME"
@@ -89,8 +88,6 @@ definitions:
 
     - step: &update-staging
         name: Update Kubernetes Manifests (Staging)
-        services:
-          - docker
         script:
           - *pipe-setup
           - pipe: *build-ops-pipe
@@ -101,8 +98,6 @@ definitions:
 
     - step: &update-prod
         name: Update Kubernetes Manifests (Production)
-        services:
-          - docker
         script:
           - *pipe-setup
           - pipe: *build-ops-pipe
