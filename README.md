@@ -1,6 +1,6 @@
 # pipeline-templates
 
-Current release: **`1.0.4`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`; Docker 3072 MB, or 7128 MB in the `-2x` build pipelines)
+Current release: **`1.0.5`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`; Docker 2048 MB, or 4096 MB in the `-2x` build pipelines)
 
 Shared Bitbucket Pipelines for Providus apps: build, PR image check, promotion and the
 GitOps update, all done by [build-ops-pipe](https://bitbucket.org/nndukwe/build-ops-pipe).
@@ -15,7 +15,7 @@ The app's whole `bitbucket-pipelines.yml`:
 definitions:
   app-name: my-app   # image tag prefix and gitops folder: environments/<env>/<app-name>
   imports:
-    platform: pipeline-templates:1.0.4:deploy.yml
+    platform: pipeline-templates:1.0.5:deploy.yml
 
 pipelines:
   pull-requests:
@@ -33,9 +33,9 @@ pipelines:
 
 ### Heavy builds (2x)
 
-Apps whose image build needs more than 3072 MB of Docker memory (e.g. CRA frontends) import the
+Apps whose image build needs more than 2048 MB of Docker memory (e.g. CRA frontends) import the
 `-2x` variants of the two **build** pipelines. They run in a `size: 2x` step (8 GB, double build
-minutes) with 7128 MB for Docker. Promotion and the PR check don't build, so they stay standard:
+minutes) with 4096 MB for Docker. Promotion and the PR check don't build, so they stay standard:
 
 ```yaml
 pipelines:

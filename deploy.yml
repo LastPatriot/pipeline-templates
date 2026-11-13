@@ -13,7 +13,7 @@ export: true
 #
 # Heavy builds (e.g. CRA frontends) import the -2x variants of the BUILD pipelines instead:
 # deploy-test-2x and hotfix-build-prod-2x run the image build in a size: 2x step (8 GB, double
-# build minutes) with 7128 MB for Docker. Promotion and checks don't build, so heavy apps keep
+# build minutes) with 4096 MB for Docker (standard pipelines: 2048 MB). Promotion and checks don't build, so heavy apps keep
 # using deploy-prod and pr-check.
 #
 # App name: set by the app in its bitbucket-pipelines.yml as `app-name:` under `definitions:`.
@@ -27,13 +27,13 @@ export: true
 definitions:
   services:
     docker:
-      # 3072 is the most a size: 1x step allows (4096 total, 1024 kept for the build
-      # container, where the pipe runs). Sized for CRA builds (customer-360).
-      memory: 3072
+      # Standard builds (backends, Vite frontends). Heavy builds use docker-2x.
+      memory: 2048
     docker-2x:
-      # For size: 2x build steps only: 8192 total, 7128 is Bitbucket's maximum for a service.
+      # For size: 2x build steps only (8192 total). Capped at 4096: what CRA builds
+      # (customer-360) needed on their old pipeline.
       type: docker
-      memory: 7128
+      memory: 4096
 
   # The pipe version lives here only. When a new pipe release is tagged, change this line.
   pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.2
