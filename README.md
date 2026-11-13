@@ -39,7 +39,8 @@ passed to importing repos.
 
 | Where | Variable |
 |---|---|
-| Repository | `DOCKERHUB_USERNAME`, `DOCKERHUB_READ_TOKEN` (secured, read-only; used by `pr-check` to look up app images), `GITOPS_ACCESS_TOKEN` (secured), `GITOPS_BOT_EMAIL` |
+| Repository (or workspace) | `DOCKERHUB_USERNAME`, `DOCKERHUB_READ_TOKEN` (secured, read-only; used by `pr-check` to look up app images), `GITOPS_BOT_EMAIL` |
+| Workspace | `GITOPS_ACCESS_TOKEN` (secured, Repositories: Write on gitops-central-repo). Visible to every pipeline in the workspace |
 | Deployments `Staging`, `Production` | `DOCKER_PASSWORD` (secured, push access) |
 
 ## Releasing
