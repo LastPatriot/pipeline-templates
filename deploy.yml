@@ -25,7 +25,7 @@ definitions:
       memory: 2048
 
   # The pipe version lives here only. When a new pipe release is tagged, change this line.
-  pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.0
+  pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.1
 
   # The pipe's image is in private provdev/appdev: log in before the pipe so Bitbucket can
   # pull it. APP_NAME comes from `app-name:` under `definitions:` in the app's own
