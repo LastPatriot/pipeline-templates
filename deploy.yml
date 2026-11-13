@@ -1,0 +1,136 @@
+export: true
+# Shared deploy pipelines for Providus apps. App repos import these; they do not copy them.
+# Only platform engineering can change this repo. Apps pin a release tag, so a change
+# here reaches an app only when that app's import is moved to the new tag.
+#
+# Usage in an app repo's bitbucket-pipelines.yml: see README.md.
+#
+# Flow (build-ops-pipe does the work - see bitbucket.org/nndukwe/build-ops-pipe):
+#   PR from test   -> pr-check:          fails if this exact source tree was never built on test
+#   push to test   -> deploy-test:       build once, push image, update environments/staging
+#   push to prod   -> deploy-prod:       promote the tested image (no rebuild), update environments/prod
+#   custom         -> hotfix-build-prod: build directly for prod when there is no tested image
+#
+# App name: set by the app in its bitbucket-pipelines.yml as `app-name:` under `definitions:`.
+#
+# Variables, set in each APP repo (variables from this repo are not shared):
+#   Repository:  DOCKERHUB_USERNAME, DOCKERHUB_READ_TOKEN (secured, read-only),
+#                GITOPS_ACCESS_TOKEN (secured, Repositories: Write on gitops-central-repo),
+#                GITOPS_BOT_EMAIL (the token's ...@bots.bitbucket.org address)
+#   Deployments: DOCKER_PASSWORD (secured, push access) on Staging and Production
+
+definitions:
+  services:
+    docker:
+      memory: 2048
+
+  # The pipe version lives here only. When a new pipe release is tagged, change this line.
+  pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.0
+
+  # The pipe's image is in private provdev/appdev: log in before the pipe so Bitbucket can
+  # pull it. APP_NAME comes from `app-name:` under `definitions:` in the app's own
+  # bitbucket-pipelines.yml (an import cannot pass variables).
+  pipe-setup: &pipe-setup |
+    echo "$DOCKERHUB_READ_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    APP_NAME="$(sed -n 's/^[[:space:]]*app-name:[[:space:]]*//p' bitbucket-pipelines.yml | head -n1 | sed 's/[[:space:]]*#.*//' | tr -d "\"' \r")"
+    if [ -z "$APP_NAME" ]; then echo "ERROR: add 'app-name: <your-app>' under definitions: in bitbucket-pipelines.yml"; exit 1; fi
+    echo "APP_NAME=$APP_NAME"
+    export APP_NAME
+
+  pipe-variables:
+    - &app-vars
+      APP_NAME: $APP_NAME
+      DOCKERHUB_USERNAME: $DOCKERHUB_USERNAME
+    - &gitops-vars
+      APP_NAME: $APP_NAME
+      DOCKERHUB_USERNAME: $DOCKERHUB_USERNAME
+      GITOPS_ACCESS_TOKEN: $GITOPS_ACCESS_TOKEN
+      GITOPS_BOT_EMAIL: $GITOPS_BOT_EMAIL
+
+  steps:
+    - step: &build-and-push
+        name: Build and Push Docker Image
+        caches:
+          - docker
+        services:
+          - docker
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *app-vars
+              ACTION: build-and-push
+              DOCKER_PASSWORD: $DOCKER_PASSWORD
+
+    - step: &promote
+        name: Promote Tested Image (Production)
+        deployment: Production # Injects Production $DOCKER_PASSWORD
+        services:
+          - docker
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *app-vars
+              ACTION: promote
+              DOCKER_PASSWORD: $DOCKER_PASSWORD
+
+    - step: &check-image
+        name: Check Tested Image Exists
+        services:
+          - docker
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *app-vars
+              ACTION: check-image
+              DOCKERHUB_READ_TOKEN: $DOCKERHUB_READ_TOKEN
+
+    - step: &update-staging
+        name: Update Kubernetes Manifests (Staging)
+        services:
+          - docker
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *gitops-vars
+              ACTION: update-manifest
+              ENV: test
+
+    - step: &update-prod
+        name: Update Kubernetes Manifests (Production)
+        services:
+          - docker
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *gitops-vars
+              ACTION: update-manifest
+              ENV: production
+
+  # A deployment environment can only appear once per pipeline, so it sits on the
+  # Docker step; the manifest step uses repository variables only.
+  pipelines:
+    pr-check:
+      - step: *check-image
+
+    deploy-test:
+      - step:
+          <<: *build-and-push
+          name: Build and Push Docker Image (test)
+          deployment: Staging # Injects Staging $DOCKER_PASSWORD
+      - step: *update-staging
+
+    deploy-prod:
+      - step: *promote
+      - step: *update-prod
+
+    hotfix-build-prod:
+      - step:
+          <<: *build-and-push
+          name: Build and Push Docker Image (Hotfix, Production)
+          deployment: Production
+      - step: *update-prod
