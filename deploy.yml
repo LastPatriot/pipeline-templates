@@ -11,6 +11,11 @@ export: true
 #   push to prod   -> deploy-prod:       promote the tested image (no rebuild), update environments/prod
 #   custom         -> hotfix-build-prod: build directly for prod when there is no tested image
 #
+# Heavy builds (e.g. CRA frontends) import the -2x variants of the BUILD pipelines instead:
+# deploy-test-2x and hotfix-build-prod-2x run the image build in a size: 2x step (8 GB, double
+# build minutes) with 7128 MB for Docker. Promotion and checks don't build, so heavy apps keep
+# using deploy-prod and pr-check.
+#
 # App name: set by the app in its bitbucket-pipelines.yml as `app-name:` under `definitions:`.
 #
 # Variables, set in each APP repo (variables from this repo are not shared):
@@ -25,6 +30,10 @@ definitions:
       # 3072 is the most a size: 1x step allows (4096 total, 1024 kept for the build
       # container, where the pipe runs). Sized for CRA builds (customer-360).
       memory: 3072
+    docker-2x:
+      # For size: 2x build steps only: 8192 total, 7128 is Bitbucket's maximum for a service.
+      type: docker
+      memory: 7128
 
   # The pipe version lives here only. When a new pipe release is tagged, change this line.
   pipe-version: &build-ops-pipe nndukwe/build-ops-pipe:1.0.2
@@ -74,6 +83,21 @@ definitions:
             variables:
               <<: *app-vars
               ACTION: promote
+              DOCKER_PASSWORD: $DOCKER_PASSWORD
+
+    # Same as build-and-push, in a size: 2x step with the larger Docker service. No docker
+    # layer cache here: Bitbucket's docker cache is tied to the standard `docker` service.
+    - step: &build-and-push-2x
+        name: Build and Push Docker Image (2x)
+        size: 2x
+        services:
+          - docker-2x
+        script:
+          - *pipe-setup
+          - pipe: *build-ops-pipe
+            variables:
+              <<: *app-vars
+              ACTION: build-and-push
               DOCKER_PASSWORD: $DOCKER_PASSWORD
 
     - step: &check-image
@@ -129,5 +153,19 @@ definitions:
       - step:
           <<: *build-and-push
           name: Build and Push Docker Image (Hotfix, Production)
+          deployment: Production
+      - step: *update-prod
+
+    deploy-test-2x:
+      - step:
+          <<: *build-and-push-2x
+          name: Build and Push Docker Image (test, 2x)
+          deployment: Staging # Injects Staging $DOCKER_PASSWORD
+      - step: *update-staging
+
+    hotfix-build-prod-2x:
+      - step:
+          <<: *build-and-push-2x
+          name: Build and Push Docker Image (Hotfix, Production, 2x)
           deployment: Production
       - step: *update-prod

@@ -1,6 +1,6 @@
 # pipeline-templates
 
-Current release: **`1.0.3`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`; Docker memory 3072 MB)
+Current release: **`1.0.4`** (uses build-ops-pipe `1.0.2`, image `provdev/platform:build-ops-pipe-11`; Docker 3072 MB, or 7128 MB in the `-2x` build pipelines)
 
 Shared Bitbucket Pipelines for Providus apps: build, PR image check, promotion and the
 GitOps update, all done by [build-ops-pipe](https://bitbucket.org/nndukwe/build-ops-pipe).
@@ -15,7 +15,7 @@ The app's whole `bitbucket-pipelines.yml`:
 definitions:
   app-name: my-app   # image tag prefix and gitops folder: environments/<env>/<app-name>
   imports:
-    platform: pipeline-templates:1.0.3:deploy.yml
+    platform: pipeline-templates:1.0.4:deploy.yml
 
 pipelines:
   pull-requests:
@@ -30,6 +30,29 @@ pipelines:
     hotfix-build-production:
       import: hotfix-build-prod@platform
 ```
+
+### Heavy builds (2x)
+
+Apps whose image build needs more than 3072 MB of Docker memory (e.g. CRA frontends) import the
+`-2x` variants of the two **build** pipelines. They run in a `size: 2x` step (8 GB, double build
+minutes) with 7128 MB for Docker. Promotion and the PR check don't build, so they stay standard:
+
+```yaml
+pipelines:
+  pull-requests:
+    test:
+      import: pr-check@platform
+  branches:
+    test:
+      import: deploy-test-2x@platform
+    prod:
+      import: deploy-prod@platform
+  custom:
+    hotfix-build-production:
+      import: hotfix-build-prod-2x@platform
+```
+
+Everyone stays on the latest release; pick memory by pipeline name, never by pinning an older tag.
 
 `app-name` is the only thing an app sets. Every step reads it from the app's
 `bitbucket-pipelines.yml` (an import cannot pass variables) and fails if it is missing.
